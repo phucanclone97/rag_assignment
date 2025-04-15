@@ -1,4 +1,5 @@
-Bra Fitting Recommendation System - Technical Assessment
+# Bra Fitting Recommendation System - Technical Assessment
+
 Introduction
 This is a simplified version of a bra fitting recommendation system that helps women find their perfect fit. The system uses RAG (Retrieval Augmented Generation) principles to match user measurements and issues with the most relevant recommendations.
 
@@ -15,31 +16,40 @@ Backend Setup
 BASH
 
 # Create and activate virtual environment
-`python -m venv venv`
+```python -m venv venv```
 
 # Windows
-`.\venv\Scripts\activate`
+```.\venv\Scripts\activate```
 
 # Mac/Linux
-`source venv/bin/activate`
+```source venv/bin/activate```
 
 # Install dependencies
-`cd backend
-pip install -r requirements.txt`
+```
+cd backend
+pip install -r requirements.txt
+```
 
 # Run backend
-`uvicorn app.main:app --reload
+```
+uvicorn app.main:app --reload
 Frontend Setup
-BASH`
+BASH
+```
 
 # In the frontend directory
+```
 cd frontend
 npm install
 npm start
-The application will be running at:
+```
 
+The application will be running at:
+```
 Frontend: http://localhost:3000
 Backend: http://localhost:8000
+```
+
 Tasks to Complete
 1. Backend Issues
 Location: backend/app/recommender.py
@@ -74,9 +84,11 @@ Location: frontend/src/components/ChatInterface.js
 - Testing Your Changes
 
 # Example Queries
-`"I measure 34 underbust and 38 bust, straps keep falling off"
+```
+"I measure 34 underbust and 38 bust, straps keep falling off"
 "My band rides up and I'm measuring 32 under, 37 over"
-"36 underbust, 42 bust, getting quadraboob effect"`
+"36 underbust, 42 bust, getting quadraboob effect"
+```
 
 # Expected Improvements
 - Better accuracy in size recommendations
@@ -113,6 +125,7 @@ Location: frontend/src/components/ChatInterface.js
 - Project Structure
 
 Collapse
+```
 .
 ├── backend/
 │   ├── app/
@@ -131,6 +144,8 @@ Collapse
     │   ├── App.js
     │   └── index.js
     └── package.json
+```
+
 Questions?
 If you have any questions about the assignment, please reach out to [Contact Email].
 
