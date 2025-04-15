@@ -1,0 +1,23 @@
+[
+    {
+        "description": "Customer with 34-inch underbust, 38-inch bust measurement, experiencing band riding up in the back, straps falling off shoulders",
+        "recommendation": "34D",
+        "reasoning": "The 4-inch difference between bust and underbust indicates D cup. Band riding up suggests current band too loose.",
+        "common_issues": ["band_riding_up", "straps_falling"],
+        "fit_tips": "Try tightening the band. It should be firm on the loosest hook."
+    },
+    {
+        "description": "32-inch underbust, 37-inch bust, cups wrinkle at the top, gore doesn't lay flat against sternum",
+        "recommendation": "32C",
+        "reasoning": "5-inch difference suggests C cup. Wrinkling indicates current cup might be too large.",
+        "common_issues": ["cup_wrinkling", "gore_floating"],
+        "fit_tips": "Try a smaller cup size while maintaining the same band size."
+    },
+    {
+        "description": "36-inch underbust, 42-inch bust, experiencing quadraboob effect, straps digging into shoulders",
+        "recommendation": "36DD",
+        "reasoning": "6-inch difference indicates DD cup. Quadraboob effect suggests current cup too small.",
+        "common_issues": ["quadraboob", "straps_digging"],
+        "fit_tips": "Try going up one cup size while keeping the same band size."
+    }
+]
