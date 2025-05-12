@@ -50,6 +50,7 @@ export const useChatbotMessages = () => {
           issues: data.identified_issues,
           confidence: data.confidence,
           isUser: false,
+          sisterSizes: data.sister_sizes,
         },
       ]);
       setIsLoading(false);
