@@ -54,7 +54,6 @@ export const useChatbotMessages = () => {
       ]);
       setIsLoading(false);
     } catch (error) {
-      console.error("Error sending message:", error);
       setError(error);
       setIsLoading(false);
     } finally {

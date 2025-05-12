@@ -24,7 +24,9 @@ const ChatInterface = () => {
         {chatbotMessages.map((msg, index) => (
           <Message key={index} message={msg} isUser={msg.isUser} />
         ))}
-        {isLoading && <div className="spinner"></div>}
+        {isLoading && (
+          <div className="spinner" data-testid="loading-spinner"></div>
+        )}
       </div>
       <form onSubmit={handleSubmit} className="input-form">
         <input
