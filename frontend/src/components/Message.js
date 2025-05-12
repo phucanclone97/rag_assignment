@@ -4,15 +4,20 @@ const Message = ({ message, isUser }) => {
   return (
     <div className={`message ${isUser ? "user" : "bot"}`}>
       <div className="message-content">
-        <Avatar isUser={isUser} />
         {isUser ? (
-          <div>{message.text}</div>
-        ) : (
-          <div>
+          <>
             <div>{message.text}</div>
-            <div>{message.reasoning}</div>
-            <div>{message.fitTips}</div>
-          </div>
+            <Avatar isUser={isUser} />
+          </>
+        ) : (
+          <>
+            <Avatar isUser={isUser} />
+            <div>
+              <p className="message-text">{message.text}</p>
+              <p className="message-reasoning">{message.reasoning}</p>
+              <p className="message-fit-tips">{message.fitTips}</p>
+            </div>
+          </>
         )}
       </div>
     </div>

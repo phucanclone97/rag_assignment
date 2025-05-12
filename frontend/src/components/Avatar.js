@@ -1,9 +1,9 @@
 const BotAvatar = () => {
-  return <div className="avatar bot"></div>;
+  return <div className="avatar bot">Bot</div>;
 };
 
 const UserAvatar = () => {
-  return <div className="avatar user"></div>;
+  return <div className="avatar user">U</div>;
 };
 
 const Avatar = ({ isUser }) => {
