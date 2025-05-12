@@ -103,20 +103,73 @@ class BraFittingRAG:
 
     def identify_fit_issues(self, query: str) -> List[str]:
         # Bug: Missing comprehensive issue detection
-        issues = []
+        issues = set()  # Use a set to avoid duplicates
+        query_lower = query.lower()
+
+        # Expanded problem dictionary with more keywords and phrases
         common_problems = {
+            #Band issues
             "riding up": "band_riding_up",
+            "rides up": "band_riding_up",
+            "band too loose": "band_riding_up",
+            "loose band": "band_riding_up",
+
+            # Strap issues
             "falling": "straps_falling",
+            "falls off": "straps_falling",
+            "slip": "straps_falling",
+            "slips": "straps_falling",
+            "slipping": "straps_falling",
+            "strap fall": "straps_falling",
+            
             "digging": "straps_digging",
+            "dig": "straps_digging",
+            "cuts in": "straps_digging",
+            "painful straps": "straps_digging",
+            "strap pain": "straps_digging",
+            
+            # Cup issues
             "wrinkle": "cup_wrinkling",
-            "overflow": "quadraboob"
+            "wrinkling": "cup_wrinkling",
+            "wrinkled": "cup_wrinkling",
+            "baggy": "cup_wrinkling",
+            "gap": "cup_gapping",
+            "gapping": "cup_gapping",
+            "gaps": "cup_gapping",
+            
+            "overflow": "quadraboob",
+            "spill": "quadraboob",
+            "spilling": "quadraboob",
+            "bulging": "quadraboob",
+            "quad boob": "quadraboob",
+            "double breast": "quadraboob",
+            
+            # Wire issues
+            "poke": "wire_poking",
+            "poking": "wire_poking",
+            "stabbing": "wire_poking",
+            "underwire pain": "wire_poking",
+            
+            # Gore issues
+            "doesn't lay flat": "gore_floating",
+            "doesn't lie flat": "gore_floating",
+            "not flat": "gore_floating",
+            "gore floats": "gore_floating",
+            "gore doesn't touch": "gore_floating",
+            "center gore": "gore_floating"
         }
         
         for keyword, issue in common_problems.items():
-            if keyword in query.lower():
-                issues.append(issue)
+            if " " in keyword and keyword in query_lower:
+                issues.add(issue) #using add instead of append to avoid duplicates
         
-        return issues
+        words = query_lower.split()
+        for word in words:
+            for keyword, issue in common_problems.items():
+                if " " not in keyword and word == keyword:
+                    issues.add(issue)
+
+        return list(issues)
 
     def get_recommendation(self, query: str) -> Dict:
         try:
