@@ -26,6 +26,7 @@ export const useChatbotMessages = () => {
         }
         const errorMessage =
           errorPayload?.detail?.[0]?.msg ||
+          errorPayload?.detail ||
           errorPayload?.message ||
           (errorPayload ? JSON.stringify(errorPayload) : null) ||
           `Request failed with status ${response.status}${
