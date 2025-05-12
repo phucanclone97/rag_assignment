@@ -5,7 +5,7 @@ class BraFittingRAG:
     def __init__(self):
         self.load_knowledge_base()
         # Bug: Incorrect similarity threshold
-        self.similarity_threshold = 0.3
+        self.similarity_threshold = 0.2
 
     def load_knowledge_base(self):
         try:
@@ -19,101 +19,129 @@ class BraFittingRAG:
             raise ValueError(f"Invalid JSON in knowledge base file: {e}")
 
     def extract_measurements(self, text: str) -> Dict[str, int]:
-        """Extract measurements from text with context awareness."""
         measurements = {}
-        words = text.split()
+        # Pre-process text slightly: remove common noise like 'inch', '-', ','
+        processed_text = text.replace('inch', '').replace('-', ' ').replace(',', ' ')
+        words = processed_text.split()
         
-        # Look for numeric values and their context
+        nums_found = []
         for i, word in enumerate(words):
-            if word.isdigit():
-                num = int(word)
-            # Check surrounding context (up to 3 words before/after)
+            # Try cleaning the word further before checking if it's a digit
+            cleaned_word = ''.join(filter(str.isdigit, word))
+            if cleaned_word.isdigit():
+                num = int(cleaned_word)
+                nums_found.append({'value': num, 'index': i})
+                
                 context_range = 3
                 start_idx = max(0, i - context_range)
                 end_idx = min(len(words), i + context_range + 1)
                 context_words = ' '.join(words[start_idx:end_idx]).lower()
                 
-                # Check for measurement type indicators
                 if any(term in context_words for term in ['underbust', 'under bust', 'band']):
                     measurements['underbust'] = num
                 elif any(term in context_words for term in ['overbust', 'over bust', 'bust', 'cup']):
                     measurements['overbust'] = num
-                
-                # Handle units (convert if necessary)
-                # This is a simplistic approach; more robust parsing might need regex
-                if i + 1 < len(words) and words[i + 1].lower() in ['cm', 'centimeter', 'centimeters']:
-                    # Convert cm to inches (rough approximation)
-                    if 'underbust' in measurements and measurements['underbust'] == num:
-                        measurements['underbust'] = int(num / 2.54)
-                    elif 'overbust' in measurements and measurements['overbust'] == num:
-                        measurements['overbust'] = int(num / 2.54)
-    
+
+        # Fallback: If two numbers found and not assigned, assume smaller is underbust
+        if len(nums_found) == 2 and ('underbust' not in measurements or 'overbust' not in measurements):
+             sorted_nums = sorted(nums_found, key=lambda x: x['value'])
+             if 'underbust' not in measurements:
+                 measurements['underbust'] = sorted_nums[0]['value']
+             if 'overbust' not in measurements:
+                 measurements['overbust'] = sorted_nums[1]['value']
+        
+        # Ensure consistency if only one assigned
+        elif len(nums_found) >= 1 and len(measurements) == 1:
+            assigned_key = next(iter(measurements))
+            assigned_val = measurements[assigned_key]
+            unassigned_nums = [n['value'] for n in nums_found if n['value'] != assigned_val]
+            if len(unassigned_nums) == 1:
+                unassigned_val = unassigned_nums[0]
+                if assigned_key == 'underbust' and 'overbust' not in measurements:
+                    measurements['overbust'] = unassigned_val
+                elif assigned_key == 'overbust' and 'underbust' not in measurements:
+                     measurements['underbust'] = unassigned_val
+
         return measurements
 
     def calculate_fit_similarity(self, query: str, context: Dict) -> float:
-        # Bug: Oversimplified similarity calculation
-        query_lower = query.lower()
-        description_lower = context['description'].lower()
+        """Calculate similarity based primarily on measurement matching."""
+        # Extract measurements from query and context
+        query_measurements = self.extract_measurements(query.lower())
+        context_desc = context['description'].lower()
+        context_measurements = self.extract_measurements(context_desc)
         
-        query_words = set(query_lower.split())
-        description_words = set(description_lower.split())
+        # Debug print to see what's being extracted
+        print(f"Query: {query}")
+        print(f"Extracted measurements: {query_measurements}")
+        print(f"Context measurements: {context_measurements}")
         
-        text_similarity = 0.0
-        # Calculate Jaccard similarity
-        if not query_words or not description_words:
-            text_similarity = 0.0
-        else:
-            intersection = query_words.intersection(description_words)
-            union = query_words.union(description_words)
-            text_similarity = len(intersection) / len(union) if union else 0.0
-
-        query_measurements = self.extract_measurements(query_lower)
-        context_measurements = self.extract_measurements(description_lower)
-        # Bug: Poor similarity logic
-        numeric_similarity = 0.0
-        if query_measurements and context_measurements:
-        # Check underbust similarity
-            if 'underbust' in query_measurements and 'underbust' in context_measurements:
-                underbust_diff = abs(query_measurements['underbust'] - context_measurements['underbust'])
-                # Scale: 0 difference = 1.0, 2+ inches difference = 0.0
-                underbust_score = max(0.0, 1.0 - (underbust_diff / 2.0))
-                numeric_similarity += underbust_score
-                
-            # Check overbust/bust similarity
-            if 'overbust' in query_measurements and 'overbust' in context_measurements:
-                overbust_diff = abs(query_measurements['overbust'] - context_measurements['overbust'])
-                # Scale: 0 difference = 1.0, 3+ inches difference = 0.0
-                overbust_score = max(0.0, 1.0 - (overbust_diff / 3.0))
-                numeric_similarity += overbust_score
-                
-            # Average the scores if we have both measurements
-            measurement_count = ('underbust' in query_measurements and 'underbust' in context_measurements) + \
-                            ('overbust' in query_measurements and 'overbust' in context_measurements)
-            numeric_similarity = numeric_similarity / measurement_count if measurement_count > 0 else 0.0
-
-        text_weight = 0.4
-        numeric_weight = 0.6
-        
+        # If no measurements in either query or context, return low similarity
         if not query_measurements or not context_measurements:
-            text_weight = 0.8
-            numeric_weight = 0.2
+            return 0.1
         
-        total_similarity = (text_weight * text_similarity) + (numeric_weight * numeric_similarity)
-        return total_similarity
+        # Calculate measurement similarity
+        similarity = 0.0
+        measurement_count = 0
+        
+        # Check underbust match
+        if 'underbust' in query_measurements and 'underbust' in context_measurements:
+            underbust_diff = abs(query_measurements['underbust'] - context_measurements['underbust'])
+            if underbust_diff == 0:
+                similarity += 1.0
+            elif underbust_diff <= 1:
+                similarity += 0.8
+            elif underbust_diff <= 2:
+                similarity += 0.5
+            else:
+                similarity += 0.0
+            measurement_count += 1
+        
+        # Check overbust/bust match
+        if 'overbust' in query_measurements and 'overbust' in context_measurements:
+            overbust_diff = abs(query_measurements['overbust'] - context_measurements['overbust'])
+            if overbust_diff == 0:
+                similarity += 1.0
+            elif overbust_diff <= 1:
+                similarity += 0.8
+            elif overbust_diff <= 2:
+                similarity += 0.5
+            else:
+                similarity += 0.0
+            measurement_count += 1
+        
+        # Add similarity for issue matching
+        query_issues = self.identify_fit_issues(query)
+        context_issues = context.get('common_issues', [])
+        
+        issue_similarity = 0.0
+        if query_issues and context_issues:
+            matching_issues = set(query_issues).intersection(set(context_issues))
+            if matching_issues:
+                issue_similarity = len(matching_issues) / max(len(query_issues), len(context_issues))
+        
+        # Final similarity is average of measurement similarity + boost for matching issues
+        final_similarity = 0.0
+        if measurement_count > 0:
+            measurement_similarity = similarity / measurement_count
+            final_similarity = 0.7 * measurement_similarity + 0.3 * issue_similarity
+            
+            # Boost exact matches significantly
+            if measurement_count == 2 and similarity == 2.0:  # Both measurements match exactly
+                final_similarity = max(final_similarity, 0.9)  # Ensure very high similarity
+        
+        print(f"Final similarity: {final_similarity}")
+        return final_similarity
 
     def identify_fit_issues(self, query: str) -> List[str]:
-        # Bug: Missing comprehensive issue detection
-        issues = set()  # Use a set to avoid duplicates
+        issues = set() 
         query_lower = query.lower()
-
-        # Expanded problem dictionary with more keywords and phrases
-        common_problems = {
-            #Band issues
+        common_problems = { # Keeping the expanded list from previous suggestions
+            # Band issues
             "riding up": "band_riding_up",
             "rides up": "band_riding_up",
             "band too loose": "band_riding_up",
             "loose band": "band_riding_up",
-
             # Strap issues
             "falling": "straps_falling",
             "falls off": "straps_falling",
@@ -121,13 +149,11 @@ class BraFittingRAG:
             "slips": "straps_falling",
             "slipping": "straps_falling",
             "strap fall": "straps_falling",
-            
             "digging": "straps_digging",
             "dig": "straps_digging",
             "cuts in": "straps_digging",
             "painful straps": "straps_digging",
             "strap pain": "straps_digging",
-            
             # Cup issues
             "wrinkle": "cup_wrinkling",
             "wrinkling": "cup_wrinkling",
@@ -136,20 +162,18 @@ class BraFittingRAG:
             "gap": "cup_gapping",
             "gapping": "cup_gapping",
             "gaps": "cup_gapping",
-            
             "overflow": "quadraboob",
             "spill": "quadraboob",
             "spilling": "quadraboob",
             "bulging": "quadraboob",
             "quad boob": "quadraboob",
             "double breast": "quadraboob",
-            
+            "quadraboob effect": "quadraboob", # More specific
             # Wire issues
             "poke": "wire_poking",
             "poking": "wire_poking",
             "stabbing": "wire_poking",
             "underwire pain": "wire_poking",
-            
             # Gore issues
             "doesn't lay flat": "gore_floating",
             "doesn't lie flat": "gore_floating",
@@ -158,17 +182,10 @@ class BraFittingRAG:
             "gore doesn't touch": "gore_floating",
             "center gore": "gore_floating"
         }
-        
+        # Use simple substring check
         for keyword, issue in common_problems.items():
-            if " " in keyword and keyword in query_lower:
-                issues.add(issue) #using add instead of append to avoid duplicates
-        
-        words = query_lower.split()
-        for word in words:
-            for keyword, issue in common_problems.items():
-                if " " not in keyword and word == keyword:
-                    issues.add(issue)
-
+            if keyword in query_lower:
+                issues.add(issue)
         return list(issues)
 
     def get_sister_sizes(self, bra_size: str) -> List[str]:
@@ -220,68 +237,81 @@ class BraFittingRAG:
 
     def get_recommendation(self, query: str) -> Dict:
         try:
-            # Bug: No input validation
+            logging.info(f"Received query: {query}") # Log query
             if not query.strip():
                 raise ValueError("Query cannot be empty")
 
-            # Identify fit issues
             query_measurements = self.extract_measurements(query)
             identified_issues = self.identify_fit_issues(query)
-            
+            logging.info(f"Extracted measurements: {query_measurements}")
+            logging.info(f"Identified issues: {identified_issues}")
+
             if not query_measurements and not identified_issues:
                 raise ValueError("Please provide at least measurements or describe fit issues")
 
             if not query_measurements:
                 logging.warning("Query lacks measurements, recommendation may be less accurate")
-            # Try to find best overall match regardless of threshold
-            all_matches = []
-            for context in self.knowledge_base:
-                similarity = self.calculate_fit_similarity(query, context)
-                if similarity > self.similarity_threshold:
-                    all_matches.append({
-                        'context': context,
-                        'similarity': similarity
-                    })
 
-            # Bug: No handling of no matches
-            if all_matches:
-                closest_match = max(all_matches, key=lambda x: x['similarity'])
-                # Only use if it has at least some minimal similarity
-                if closest_match['similarity'] > 0.1:  # Very low threshold for "at least something matches"
-                    sister_sizes = self.get_sister_sizes(closest_match['context']['recommendation'])
+            all_scored_items = []
+            logging.info(f"Comparing against {len(self.knowledge_base)} KB items.")
+            for i, context in enumerate(self.knowledge_base):
+                similarity = self.calculate_fit_similarity(query, context) # Assuming calculate_fit_similarity is defined
+                # DEBUG PRINT:
+                logging.debug(f"Item {i} ({context.get('recommendation')}), Similarity: {similarity:.4f}")
+                all_scored_items.append({
+                    'context': context,
+                    'similarity': similarity
+                })
+
+            relevant_fits = [
+                item for item in all_scored_items if item['similarity'] > self.similarity_threshold
+            ]
+            logging.info(f"Found {len(relevant_fits)} relevant fits above threshold {self.similarity_threshold}")
+
+            if relevant_fits:
+                best_match = max(relevant_fits, key=lambda x: x['similarity'])
+                logging.info(f"Best relevant match: {best_match['context'].get('recommendation')} (Similarity: {best_match['similarity']:.4f})")
+                sister_sizes = self.get_sister_sizes(best_match['context']['recommendation']) # Assuming get_sister_sizes is defined
+                return {
+                    "recommendation": best_match['context']['recommendation'],
+                    "confidence": best_match['similarity'],
+                    "reasoning": best_match['context']['reasoning'],
+                    "fit_tips": best_match['context']['fit_tips'],
+                    "identified_issues": identified_issues,
+                    "sister_sizes": sister_sizes
+                }
+            elif all_scored_items:
+                closest_match_overall = max(all_scored_items, key=lambda x: x['similarity'])
+                logging.info(f"No relevant fits. Closest overall match: {closest_match_overall['context'].get('recommendation')} (Similarity: {closest_match_overall['similarity']:.4f})")
+                
+                # Check against the low threshold
+                if closest_match_overall['similarity'] > 0.1: 
+                    sister_sizes = self.get_sister_sizes(closest_match_overall['context']['recommendation'])
+                    logging.info("Returning low confidence match.")
                     return {
-                        "recommendation": closest_match['context']['recommendation'],
-                        "confidence": closest_match['similarity'],
-                        "reasoning": "Low confidence match. " + closest_match['context']['reasoning'],
-                        "fit_tips": closest_match['context']['fit_tips'],
+                        "recommendation": closest_match_overall['context']['recommendation'],
+                        "confidence": closest_match_overall['similarity'],
+                        "reasoning": "Low confidence match. " + closest_match_overall['context']['reasoning'],
+                        "fit_tips": closest_match_overall['context']['fit_tips'],
                         "identified_issues": identified_issues,
                         "sister_sizes": sister_sizes
                     }
-            if not all_matches:
-                return {
-                    "recommendation": None,  # Bug: Hardcoded default
-                    "confidence": 0.0,
-                    "reasoning": "Unable to find exact match. Please measure again.",
-                    "fit_tips": "Please provide more detailed measurements (underbust and bust) and any fit issues you're experiencing.",
-                    "identified_issues": identified_issues,
-                    "sister_sizes": []
-                }
-            best_match = max(all_matches, key=lambda x: x['similarity'])
-            sister_sizes = self.get_sister_sizes(best_match['context']['recommendation'])
+                else:
+                    logging.info("Closest overall match similarity too low.")
+            
+            logging.warning("No suitable match found.")
             return {
-                "recommendation": best_match['context']['recommendation'],
-                "confidence": best_match['similarity'],
-                "reasoning": best_match['context']['reasoning'],
-                "fit_tips": best_match['context']['fit_tips'],
+                "recommendation": None,
+                "confidence": 0.0,
+                "reasoning": "Unable to find a suitable match based on your information. Please ensure measurements are accurate.",
+                "fit_tips": "Please consult our measurement guide or provide more details about your fit issues.",
                 "identified_issues": identified_issues,
-                "sister_sizes": sister_sizes  # Add the sister sizes
+                "sister_sizes": []
             }
 
         except ValueError as ve:
-        # Handle validation errors properly
-            logging.warning(f"Validation error: {ve}")
+            logging.warning(f"Validation error in get_recommendation: {ve}")
             return {"error": str(ve)}
         except Exception as e:
-            # Log unexpected errors with full traceback
-            logging.exception(f"Unexpected error in get_recommendation: {e}")
+            logging.exception(f"Unexpected error in get_recommendation: {e}") # Use logging.exception here
             return {"error": "An unexpected error occurred while processing your request"}
