@@ -11,6 +11,9 @@ export const useChatbotMessages = () => {
     try {
       const response = await fetch("http://localhost:8000/api/bra-fitting", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ text: inputMessage }),
       });
 
@@ -50,8 +53,6 @@ export const useChatbotMessages = () => {
       ]);
       setIsLoading(false);
     } catch (error) {
-      console.log("Error in useChatbotMessages");
-      console.log({ error });
       console.error("Error sending message:", error);
       setError(error);
       setIsLoading(false);
