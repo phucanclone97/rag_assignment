@@ -27,7 +27,6 @@ const Message = ({ message, isUser }) => {
                   <strong>Fit Tips:</strong> {message.fitTips}
                 </p>
               )}
-              {console.log(message.sisterSizes)}
               {/* Display Sister Sizes if they exist and the array is not empty */}
               {message.sisterSizes && message.sisterSizes.length > 0 && (
                 <p className="message-sister-sizes">
