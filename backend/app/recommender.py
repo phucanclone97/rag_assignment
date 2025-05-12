@@ -28,25 +28,25 @@ class BraFittingRAG:
             if word.isdigit():
                 num = int(word)
             # Check surrounding context (up to 3 words before/after)
-            context_range = 3
-            start_idx = max(0, i - context_range)
-            end_idx = min(len(words), i + context_range + 1)
-            context_words = ' '.join(words[start_idx:end_idx]).lower()
-            
-            # Check for measurement type indicators
-            if any(term in context_words for term in ['underbust', 'under bust', 'band']):
-                measurements['underbust'] = num
-            elif any(term in context_words for term in ['overbust', 'over bust', 'bust', 'cup']):
-                measurements['overbust'] = num
-            
-            # Handle units (convert if necessary)
-            # This is a simplistic approach; more robust parsing might need regex
-            if i + 1 < len(words) and words[i + 1].lower() in ['cm', 'centimeter', 'centimeters']:
-                # Convert cm to inches (rough approximation)
-                if 'underbust' in measurements and measurements['underbust'] == num:
-                    measurements['underbust'] = int(num / 2.54)
-                elif 'overbust' in measurements and measurements['overbust'] == num:
-                    measurements['overbust'] = int(num / 2.54)
+                context_range = 3
+                start_idx = max(0, i - context_range)
+                end_idx = min(len(words), i + context_range + 1)
+                context_words = ' '.join(words[start_idx:end_idx]).lower()
+                
+                # Check for measurement type indicators
+                if any(term in context_words for term in ['underbust', 'under bust', 'band']):
+                    measurements['underbust'] = num
+                elif any(term in context_words for term in ['overbust', 'over bust', 'bust', 'cup']):
+                    measurements['overbust'] = num
+                
+                # Handle units (convert if necessary)
+                # This is a simplistic approach; more robust parsing might need regex
+                if i + 1 < len(words) and words[i + 1].lower() in ['cm', 'centimeter', 'centimeters']:
+                    # Convert cm to inches (rough approximation)
+                    if 'underbust' in measurements and measurements['underbust'] == num:
+                        measurements['underbust'] = int(num / 2.54)
+                    elif 'overbust' in measurements and measurements['overbust'] == num:
+                        measurements['overbust'] = int(num / 2.54)
     
         return measurements
 
