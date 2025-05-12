@@ -175,23 +175,29 @@ class BraFittingRAG:
         try:
             # Bug: No input validation
             if not query.strip():
-                raise ValueError("Empty query")
+                raise ValueError("Query cannot be empty")
 
             # Identify fit issues
+            query_measurements = self.extract_measurements(query)
             identified_issues = self.identify_fit_issues(query)
             
+            if not query_measurements and not identified_issues:
+                raise ValueError("Please provide at least measurements or describe fit issues")
+
+            if not query_measurements:
+                logging.warning("Query lacks measurements, recommendation may be less accurate")
             # Find relevant contexts
-            relevant_fits = []
+            all_matches = []
             for context in self.knowledge_base:
                 similarity = self.calculate_fit_similarity(query, context)
                 if similarity > self.similarity_threshold:
-                    relevant_fits.append({
+                    all_matches.append({
                         'context': context,
                         'similarity': similarity
                     })
 
             # Bug: No handling of no matches
-            if not relevant_fits:
+            if not all_matches:
                 return {
                     "recommendation": "34B",  # Bug: Hardcoded default
                     "confidence": 0.3,
@@ -200,7 +206,7 @@ class BraFittingRAG:
                 }
 
             # Bug: Oversimplified recommendation selection
-            best_match = max(relevant_fits, key=lambda x: x['similarity'])
+            best_match = max(all_matches, key=lambda x: x['similarity'])
             
             return {
                 "recommendation": best_match['context']['recommendation'],
