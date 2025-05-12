@@ -6,19 +6,33 @@ export const useChatbotMessages = () => {
   const [error, setError] = useState(null);
 
   const sendMessage = async (inputMessage) => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
       const response = await fetch("http://localhost:8000/api/bra-fitting", {
         method: "POST",
         body: JSON.stringify({ text: inputMessage }),
       });
 
-      // if (!response.ok) {
-      //   throw new Error(response.body);
-      // }
+      if (!response.ok) {
+        let errorPayload = null;
+        try {
+          errorPayload = await response.json();
+        } catch (parseError) {
+          console.error("Failed to parse error response body:", parseError);
+        }
+        const errorMessage =
+          errorPayload?.detail?.[0]?.msg ||
+          errorPayload?.message ||
+          (errorPayload ? JSON.stringify(errorPayload) : null) ||
+          `Request failed with status ${response.status}${
+            response.statusText ? ": " + response.statusText : ""
+          }`;
+
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
-      console.log(data);
       setMessages([
         ...messages,
         {
