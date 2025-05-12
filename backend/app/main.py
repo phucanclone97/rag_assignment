@@ -23,11 +23,14 @@ recommender = BraFittingRAG()
 async def get_fitting_recommendation(query: Query):
     try:
         # Bug: No input validation
+        print({"text":query.text})
+        if query.text == "":
+            raise HTTPException(status_code=400, detail="Query text cannot be empty")
         result = recommender.get_recommendation(query.text)
         return result
     except Exception as e:
         # Bug: Generic error handling
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e.detail))
 
 @app.get("/health")
 async def health_check():
