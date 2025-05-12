@@ -37,6 +37,7 @@ export const useChatbotMessages = () => {
       }
 
       const data = await response.json();
+      console.log(data);
       setMessages([
         ...messages,
         {

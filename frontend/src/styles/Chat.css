@@ -85,6 +85,19 @@
   font-weight: 500;
 }
 
+/* Add styles for sister sizes */
+.message-sister-sizes {
+  font-size: 13px; /* Slightly smaller */
+  font-weight: 400;
+  color: #555; /* Grey text */
+  margin-top: 8px; /* Space above */
+}
+
+/* Adjust spacing within the bot message text block */
+.message.bot .message-content > div > p {
+  margin-bottom: 6px; /* Add space below each paragraph */
+}
+
 .input-form {
   display: flex;
   gap: 10px;
