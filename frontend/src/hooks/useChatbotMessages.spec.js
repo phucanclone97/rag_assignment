@@ -31,18 +31,12 @@ describe("useChatbotMessages Hook", () => {
       json: async () => mockResponse,
     });
 
-    const { result, waitForNextUpdate } = renderHook(() =>
-      useChatbotMessages()
-    );
+    const { result } = renderHook(() => useChatbotMessages());
 
     // Use act to wrap state updates triggered by async operations
     await act(async () => {
       result.current.sendMessage("Test input");
     });
-
-    // Wait for async operations and state updates to complete
-    // Note: waitForNextUpdate might not be needed depending on RTL version/setup
-    // await waitForNextUpdate(); // Or use waitFor from @testing-library/react
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
@@ -69,9 +63,7 @@ describe("useChatbotMessages Hook", () => {
       json: async () => mockError,
     });
 
-    const { result, waitForNextUpdate } = renderHook(() =>
-      useChatbotMessages()
-    );
+    const { result } = renderHook(() => useChatbotMessages());
 
     await act(async () => {
       result.current.sendMessage("Bad input");
@@ -89,15 +81,11 @@ describe("useChatbotMessages Hook", () => {
     const networkError = new Error("Network failed");
     fetch.mockRejectedValueOnce(networkError);
 
-    const { result, waitForNextUpdate } = renderHook(() =>
-      useChatbotMessages()
-    );
+    const { result } = renderHook(() => useChatbotMessages());
 
     await act(async () => {
       result.current.sendMessage("Input causing network error");
     });
-
-    // await waitForNextUpdate(); // Or waitFor
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.messages).toEqual([]);
@@ -113,17 +101,13 @@ describe("useChatbotMessages Hook", () => {
       json: async () => mockError,
     });
 
-    const { result, waitForNextUpdate } = renderHook(() =>
-      useChatbotMessages()
-    );
+    const { result } = renderHook(() => useChatbotMessages());
 
     await act(async () => {
       result.current.sendMessage("Trigger error");
     });
-    // await waitForNextUpdate();
     expect(result.current.error).not.toBeNull(); // Error should be set
 
-    // Now, trigger a successful call
     const mockSuccessResponse = { recommendation: "32B" };
     fetch.mockResolvedValueOnce({
       ok: true,
@@ -133,7 +117,6 @@ describe("useChatbotMessages Hook", () => {
     await act(async () => {
       result.current.sendMessage("Successful input");
     });
-    // await waitForNextUpdate();
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull(); // Error should be cleared
