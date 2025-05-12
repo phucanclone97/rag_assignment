@@ -171,6 +171,53 @@ class BraFittingRAG:
 
         return list(issues)
 
+    def get_sister_sizes(self, bra_size: str) -> List[str]:
+        """Calculate sister sizes (same cup volume with different band sizes)."""
+        # Parse the bra size into band and cup
+        if not bra_size or not isinstance(bra_size, str):
+            return []
+        
+        # Try to parse sizes like "34D", "36DD", etc.
+        i = 0
+        while i < len(bra_size) and bra_size[i].isdigit():
+            i += 1
+        
+        if i == 0 or i == len(bra_size):
+            return []  # Invalid format
+        
+        try:
+            band = int(bra_size[:i])
+            cup = bra_size[i:]
+            
+            # Cup progression (simplified)
+            cup_progression = ['A', 'B', 'C', 'D', 'DD', 'DDD', 'E', 'F', 'FF', 'G']
+            
+            # Find the cup's position
+            if cup not in cup_progression:
+                return []  # Unknown cup
+            
+            cup_index = cup_progression.index(cup)
+            
+            # Calculate sister sizes
+            sister_sizes = []
+            
+            # One band size smaller, one cup size larger
+            if band > 30 and cup_index + 1 < len(cup_progression):
+                smaller_band = band - 2
+                larger_cup = cup_progression[cup_index + 1]
+                sister_sizes.append(f"{smaller_band}{larger_cup}")
+            
+            # One band size larger, one cup size smaller
+            if band < 44 and cup_index > 0:
+                larger_band = band + 2
+                smaller_cup = cup_progression[cup_index - 1]
+                sister_sizes.append(f"{larger_band}{smaller_cup}")
+            
+            return sister_sizes
+            
+        except (ValueError, IndexError):
+            return []  # Handle any parsing errors
+
     def get_recommendation(self, query: str) -> Dict:
         try:
             # Bug: No input validation
@@ -186,7 +233,7 @@ class BraFittingRAG:
 
             if not query_measurements:
                 logging.warning("Query lacks measurements, recommendation may be less accurate")
-            # Find relevant contexts
+            # Try to find best overall match regardless of threshold
             all_matches = []
             for context in self.knowledge_base:
                 similarity = self.calculate_fit_similarity(query, context)
@@ -197,25 +244,44 @@ class BraFittingRAG:
                     })
 
             # Bug: No handling of no matches
+            if all_matches:
+                closest_match = max(all_matches, key=lambda x: x['similarity'])
+                # Only use if it has at least some minimal similarity
+                if closest_match['similarity'] > 0.1:  # Very low threshold for "at least something matches"
+                    sister_sizes = self.get_sister_sizes(closest_match['context']['recommendation'])
+                    return {
+                        "recommendation": closest_match['context']['recommendation'],
+                        "confidence": closest_match['similarity'],
+                        "reasoning": "Low confidence match. " + closest_match['context']['reasoning'],
+                        "fit_tips": closest_match['context']['fit_tips'],
+                        "identified_issues": identified_issues,
+                        "sister_sizes": sister_sizes
+                    }
             if not all_matches:
                 return {
-                    "recommendation": "34B",  # Bug: Hardcoded default
-                    "confidence": 0.3,
+                    "recommendation": None,  # Bug: Hardcoded default
+                    "confidence": 0.0,
                     "reasoning": "Unable to find exact match. Please measure again.",
-                    "fit_tips": "Please consult our measurement guide."
+                    "fit_tips": "Please provide more detailed measurements (underbust and bust) and any fit issues you're experiencing.",
+                    "identified_issues": identified_issues,
+                    "sister_sizes": []
                 }
-
-            # Bug: Oversimplified recommendation selection
             best_match = max(all_matches, key=lambda x: x['similarity'])
-            
+            sister_sizes = self.get_sister_sizes(best_match['context']['recommendation'])
             return {
                 "recommendation": best_match['context']['recommendation'],
                 "confidence": best_match['similarity'],
                 "reasoning": best_match['context']['reasoning'],
                 "fit_tips": best_match['context']['fit_tips'],
-                "identified_issues": identified_issues
+                "identified_issues": identified_issues,
+                "sister_sizes": sister_sizes  # Add the sister sizes
             }
 
+        except ValueError as ve:
+        # Handle validation errors properly
+            logging.warning(f"Validation error: {ve}")
+            return {"error": str(ve)}
         except Exception as e:
-            # Bug: Generic error handling
-            return {"error": str(e)}
+            # Log unexpected errors with full traceback
+            logging.exception(f"Unexpected error in get_recommendation: {e}")
+            return {"error": "An unexpected error occurred while processing your request"}
